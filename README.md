@@ -1,25 +1,34 @@
 # docker-exa
 
-## Build docker image
+### Build docker image
 
-sudo docker build -t exaequos .
+```sudo docker build -t exaequos .
 
-## file tree
+### file tree
 
-<host current dir>/root/media/localhost/<app>/exa
+	Example of tree for an <app> in /media/localhost/
 
-## run docker
+    <host current dir>/root/media/localhost/
+	    <app>/
+			src/
+				sources
+			exa/
+				<app>.js
+				<app>.wasm
 
-sudo docker run -it -v $(pwd)/root:/home/root -v $(pwd)/cache:/home/emscripten-exa/cache -p 127.0.0.1:7777:7777 exaequos
 
-## Build app inside docker
+### run docker
 
-/home/root/media/localhost/<app>/src# emcc test.c -o ../exa test.js
+```sudo docker run -it -v $(pwd)/root:/home/root -v $(pwd)/cache:/home/emscripten-exa/cache -p 127.0.0.1:7777:7777 exaequos
 
-## Run local server
+### Build app inside docker
 
-/home/root# node /home/emscripten-exa/third_party/server/server.js
+```/home/root/media/localhost/<app>/src# emcc test.c -o ../exa test.js
 
-## Run app inside exaequos
+### Run local server
 
-/media/localhost/test
+```/home/root# node /home/emscripten-exa/third_party/server/server.js
+
+### Run app inside exaequos
+
+```/media/localhost/test
