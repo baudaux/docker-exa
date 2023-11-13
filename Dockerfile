@@ -46,8 +46,8 @@ RUN cd binaryen && \
     git checkout tags/version_110 && \
     git submodule init && \
     git submodule update && \
-    cmake . && \
-    make && \
+    cmake -DBUILD_TESTS=OFF . && \
+    make -j`nproc --all` && \
     make install
     
 RUN set -ex && \
