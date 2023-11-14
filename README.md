@@ -31,4 +31,5 @@
 
 ### Run app inside exaequos
 
-```/media/localhost/test``
+```/media/localhost/test```
+
