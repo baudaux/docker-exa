@@ -6,7 +6,7 @@
 
 ### file tree
 
-	Example of tree for an <app> in /media/localhost/
+Example of tree for an <app> in /media/localhost/
 
     <host current dir>/root/media/localhost/
 	    <app>/
@@ -16,8 +16,7 @@
 				<app>.js
 				<app>.wasm
 
-
-### run docker
+### Run docker
 
 ```docker run -it -v $(pwd)/root:/home/root -v $(pwd)/cache:/home/emscripten-exa/cache -p 127.0.0.1:7777:7777 exaequos```
 
@@ -26,6 +25,8 @@
 ```emcc src/test.c -o exa/test.js```
 
 ### Run local server inside docker
+
+At root directory:
 
 ```node /home/emscripten-exa/third_party/server/server.js```
 
