@@ -4,17 +4,18 @@
 
 ```docker build -t exaequos .```
 
-### file tree
+### file tree of current project
 
-Example of tree for an <app> in /media/localhost/
+Example of file tree for an <app> in /media/localhost/
 
-    <host current dir>/root/media/localhost/
-	    <app>/
-			src/
-				sources
-			exa/
-				<app>.js
-				<app>.wasm
+    <project pwd>
+		/build/media/localhost/
+			<app>/
+				src/
+					sources
+				exa/
+					<app>.js
+					<app>.wasm
 
 ### Run docker
 
@@ -26,7 +27,7 @@ Example of tree for an <app> in /media/localhost/
 
 ### Run local server inside docker
 
-At root directory:
+Start server.js at parent directory of /media/locahost:
 
 ```node /home/emscripten-exa/third_party/server/server.js```
 
