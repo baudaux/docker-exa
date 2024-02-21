@@ -5,6 +5,10 @@ WORKDIR /home
 RUN set -ex && \
     apt-get -y update && \
     apt-get -y install git
+
+RUN set -ex && \
+    apt-get -y update && \
+    apt-get -y install pkg-config
     
 RUN set -ex && \
     apt-get -y update && \
