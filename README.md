@@ -1,6 +1,6 @@
 # docker-exa
 
-Offer the whole environement for compiling your project for ExaequOS.
+Offer the whole environement for compiling your project for exaequOS.
 Note: An online Docker image exists at: https://hub.docker.com/repository/docker/lecrapouille/exaequos
 
 ## Prerequisite
@@ -14,7 +14,7 @@ mkdir -p ~/.cache/exaequos
 If this folder is not created, the Docker will create one but with root priviledge and you do not want to have root folder inside your folders.
 
 
-## Clone the Dockerfile for ExaequOS
+## Clone the Dockerfile for exaequOS
 
 ```
 git clone https://github.com/baudaux/docker-exa.git
@@ -27,46 +27,46 @@ cd docker-exa
 docker build -t exaequos .
 ```
 
-## Run ExaequOS Docker against your project you want to compile
+## Run exaequOS Docker against your project you want to compile
 
 - Go to you project folder first. Let suppose your user name is `John` and the project name is `Test`.
-- Then call ExaequOS docker against your project:
+- Then call exaequOS docker against your project:
 
 ```
-cd /home/John/Test
+cd /home/John/test
 docker run -it -u $(id -u ${USER}):$(id -g ${USER}) -v $(pwd):$(pwd) -v ~/.cache/exaequos:/home/exaequos/emscripten-exa/cache -p 127.0.0.1:7777:7777 -w $(pwd) exaequos
 ```
 
 Once inside your Docker, you will see this kind of prompt:
 
 ```
-ExaequOS:720c9a20d6d4:/home/John/Test$
+ExaequOS:720c9a20d6d4:/home/John/test$
 ```
 
 If your project depends on graphical libs. You can download them:
 
 ```
-ExaequOS:720c9a20d6d4:/home/John/Test$ epm.py install exa-wayland glfw raylib
+ExaequOS:720c9a20d6d4:/home/John/test$ epm.py install exa-wayland glfw raylib
 ```
 
 A folder `exapkgs` shall have been created. You can refer the path to pkg-config:
 
 ```
-ExaequOS:720c9a20d6d4:/home/John/Test$ export PKG_CONFIG_PATH=/home/John/Test/exapkgs/pkgconfigs
+ExaequOS:720c9a20d6d4:/home/John/Test$ export PKG_CONFIG_PATH=/home/John/test/exapkgs/pkgconfigs
 ```
 
 Let compile your project. For example
 
 ```
-ExaequOS:720c9a20d6d4:/home/John/Test/src$ emcc test.c -o Test.js
+ExaequOS:720c9a20d6d4:/home/John/test/src$ emcc test.c -o Test.js
 ```
 
 Use `em++` for compiling C++ files and `emar crs` for creating static libs. Compilation flags are not shown here but are the same than gcc/g++.
 
 ## Run local server inside docker
 
-Once your project has been compiled, copy the `Test.js` and `Test.wasm` binaries inside the `/media/localhost/Test/exa` folder.
-Create in this folder an `exa.html` file with the following content (Replace `Test.js` by the real name of your application):
+Once your project has been compiled, copy the `test.js` and `test.wasm` binaries inside the `/home/John/test/media/localhost/test/exa` folder.
+Create in this folder an `exa.html` file with the following content (Replace `test.js` by the real name of your application):
 
 ```
 <!doctype html>
@@ -86,12 +86,12 @@ Create in this folder an `exa.html` file with the following content (Replace `Te
   </style>
 </head>
 <body>
-  <script async type="text/javascript" src="Test.js"></script>
+  <script async type="text/javascript" src="test.js"></script>
 </body>
 </html>
 ```
 
-The ExaequOS server is normally started (`ps -aux node`). If not running, start it at parent directory of /media/locahost (build dir in this example)
+Start the node server at parent directory of `media/locahost` (`/home/John/test/` in this example)
 
 ```
 node /home/exaequos/emscripten-exa/third_party/server/server.js &
