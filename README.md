@@ -63,6 +63,13 @@ ExaequOS:720c9a20d6d4:/home/John/test_project/src$ emcc test.c -o test.js
 
 Use `em++` for compiling C++ files and `emar crs` for creating static libs. Compilation flags are not shown here but are the same than gcc/g++.
 
+If you need to install additional packages inside the docker, you can get the `container id` and connect to the docker container as root:
+
+```
+docker ps
+docker exec -it -u root <container_id> /bin/bash
+```
+
 ## Run local server inside docker
 
 Once your application has been compiled, copy the `test.js` and `test.wasm` binaries inside the `/home/John/test_project/media/localhost/test/exa` folder (and `test.worker.js`if you compiled the application with -pthread).
