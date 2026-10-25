@@ -1,73 +1,84 @@
 ###############################################################################
-### Dockerfile offering compilation evironements for ExaequOS.
-### https://github.com/exaequos
+### Compilation environment for ExaequOS.
+### https://github.com/Lecrapouille/docker-exa
+###
+### The toolchain lives in /opt and is readable by any uid, so
+### `docker run -u $(id -u)` works in CI. The compiler is clang 16 and
+### Binaryen version_110, the pair emscripten-exa was built against.
+### The debug tools (lldb, clang-tidy, clangd) and a from-source Binaryen
+### build are not included.
 ###############################################################################
 
 FROM debian:bookworm-slim
-ENV SHELL /usr/bin/bash
-RUN set -ex
-ENV EXAEQUOS "exaequos"
 
-###############################################################################
-### Operating system packages.
-###############################################################################
-RUN apt-get -y update
-RUN apt-get -y install git cmake make ninja-build pkg-config lsb-release wget curl software-properties-common gnupg bc bash-completion autotools-dev autoconf vim
-RUN apt-get -y install python3  python3-requests
-RUN apt-get -y install nodejs npm
-RUN echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-16 main" > /etc/apt/sources.list.d/apt.llvm.org.list
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key |  tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-RUN apt-get -y install clang-16 lldb-16 lld-16 clangd-16 clang-tidy-16 clang-format-16 clang-tools-16 llvm-16-dev lld-16 lldb-16 llvm-16-tools libomp-16-dev libc++-16-dev libc++abi-16-dev libclang-common-16-dev libclang-16-dev libclang-cpp16-dev libunwind-16-dev libclang-rt-16-dev libpolly-16-dev
+ENV EXAEQUOS=exaequos \
+    EXA_EMSCRIPTEN=/opt/emscripten-exa \
+    EM_CONFIG=/opt/emscripten-exa/.emscripten \
+    PATH="/opt/emscripten-exa:/opt/emscripten-exa/third_party/epm:/opt/binaryen/bin:${PATH}" \
+    LANG=C.UTF-8
 
-RUN ln -s /usr/bin/clang-16 /usr/bin/clang
-RUN ln -s /usr/bin/clang++-16 /usr/bin/clang++
-RUN ln -s /usr/bin/llc-16 /usr/bin/llc
-RUN ln -s /usr/bin/llvm-ar-16 /usr/bin/llvm-ar
-RUN ln -s /usr/bin/llvm-ranlib-16 /usr/bin/llvm-ranlib
-RUN ln -s /usr/bin/llvm-nm-16 /usr/bin/llvm-nm
-RUN ln -s /usr/bin/llvm-objcopy-16 /usr/bin/llvm-objcopy
-RUN ln -s /usr/bin/llvm-strip-16 /usr/bin/llvm-strip
-RUN ln -s /usr/lib/llvm-16/bin/wasm-ld /usr/bin/wasm-ld
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        autoconf autotools-dev bash bash-completion ca-certificates curl \
+        git gnupg make nodejs npm pkg-config procps python3 python3-requests \
+        vim \
+ && rm -rf /var/lib/apt/lists/*
 
-#RUN apt-get clean
-#RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+        | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
+ && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-16 main" \
+        > /etc/apt/sources.list.d/llvm-16.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends clang-16 lld-16 llvm-16 \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/clang-16 /usr/bin/clang \
+ && ln -sf /usr/bin/clang++-16 /usr/bin/clang++ \
+ && ln -sf /usr/bin/llc-16 /usr/bin/llc \
+ && ln -sf /usr/bin/llvm-ar-16 /usr/bin/llvm-ar \
+ && ln -sf /usr/bin/llvm-ranlib-16 /usr/bin/llvm-ranlib \
+ && ln -sf /usr/bin/llvm-nm-16 /usr/bin/llvm-nm \
+ && ln -sf /usr/bin/llvm-objcopy-16 /usr/bin/llvm-objcopy \
+ && ln -sf /usr/bin/llvm-strip-16 /usr/bin/llvm-strip \
+ && ln -sf /usr/lib/llvm-16/bin/wasm-ld /usr/bin/wasm-ld
 
-###############################################################################
-### Create user and home folder. Customize prompt. Do it after apt-get install.
-###############################################################################
-ENV USER $EXAEQUOS
-ENV HOME "/home/$USER"
-RUN adduser --quiet --disabled-password --gecos '' $USER
-RUN mkdir -p /media/localhost
-RUN chown $USER:$USER /media/localhost
-USER $USER
+# The release tarball replaces a git clone of Binaryen and its cmake build.
+RUN curl -fsSL -o /tmp/binaryen.tar.gz \
+        https://github.com/WebAssembly/binaryen/releases/download/version_110/binaryen-version_110-x86_64-linux.tar.gz \
+ && tar -xzf /tmp/binaryen.tar.gz -C /opt \
+ && mv /opt/binaryen-version_110 /opt/binaryen \
+ && rm /tmp/binaryen.tar.gz \
+ && test -x /opt/binaryen/bin/wasm-opt
 
-###############################################################################
-### Download, compile and install ExaequOS repos.
-###############################################################################
-ENV EXA_EMSCRIPTEN=$HOME/emscripten-exa
-ENV PATH "$EXA_EMSCRIPTEN:$EXA_EMSCRIPTEN/third_party/epm:$PATH"
+RUN git clone --depth 1 https://github.com/baudaux/emscripten-exa.git /opt/emscripten-exa \
+ && printf '%s\n' \
+        "EMSCRIPTEN_ROOT = '/opt/emscripten-exa'" \
+        "LLVM_ROOT = '/usr/bin'" \
+        "BINARYEN_ROOT = '/opt/binaryen'" \
+        "NODE_JS = '/usr/bin/node'" \
+        "CACHE = '/opt/emscripten-exa/cache'" \
+        > /opt/emscripten-exa/.emscripten \
+ && git config --system --add safe.directory /opt/emscripten-exa \
+ && git config --system --add safe.directory '*' \
+ && chmod -R a+rX /opt/emscripten-exa /opt/binaryen \
+ && mkdir -p /opt/emscripten-exa/cache /media/localhost \
+ && chmod 1777 /opt/emscripten-exa/cache /media/localhost
 
-WORKDIR $HOME
-RUN git clone https://github.com/baudaux/emscripten-exa.git --depth 1
-RUN $EXA_EMSCRIPTEN/emcc --generate-config
-RUN git clone https://github.com/WebAssembly/binaryen.git --branch version_110 --recursive --depth 1
-RUN (cd binaryen && cmake -DBUILD_TESTS=OFF . && make -j`nproc --all`)
+WORKDIR /opt/emscripten-exa/third_party/server
+RUN npm install --omit=dev \
+ && chmod -R a+rX /opt/emscripten-exa/third_party/server
 
-WORKDIR $EXA_EMSCRIPTEN/third_party/server
-RUN npm install
+RUN useradd --create-home --shell /bin/bash exaequos \
+ && chmod 755 /home/exaequos \
+ && printf '%s\n' \
+        'PS1="\[\033[1;36m\]ExaequOS\[\e[0m\]:\[\033[1;33m\]\h\[\e[0m\]:\[\033[1;34m\]\w\[\e[0m\]$ "' \
+        'if [ -f /usr/share/bash-completion/bash_completion ]; then . /usr/share/bash-completion/bash_completion; fi' \
+        > /home/exaequos/.bashrc \
+ && chmod 644 /home/exaequos/.bashrc
 
-USER root
-RUN (cd $HOME/binaryen && make install)
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod 755 /usr/local/bin/entrypoint.sh
 
-###############################################################################
-###
-###############################################################################
-USER $USER
-
-#RUN echo 'function prompt_command {' >> $HOME/.bashrc
-#RUN echo '  PS1="\[\033[1;36m\]ExaequOS\[\e[0m\]:\[\033[1;33m\]${HOSTNAME}\[\e[0m\]:\[\033[1;34m\]${PWD}\[\e[0m\]$ "' >> $HOME/.bashrc
-#RUN echo '}' >> $HOME/.bashrc
-#RUN echo 'PROMPT_COMMAND=prompt_command' >> $HOME/.bashrc
-#RUN echo 'if [ -f /usr/share/bash-completion/bash_completion ]; then . /usr/share/bash-completion/bash_completion; fi' >> $HOME/.bashrc
-#RUN echo 'if [ "`ps -ef | grep -v grep | grep node`" == "" ]; then node /home/exaequos/emscripten-exa/third_party/server/server.js & fi' >> $HOME/.bashrc
+USER exaequos
+WORKDIR /home/exaequos
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]

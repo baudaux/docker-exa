@@ -1,81 +1,82 @@
 # docker-exa
 
-Offer the whole environement for compiling your project for exaequOS.
-Note: An online Docker image exists at: https://hub.docker.com/repository/docker/lecrapouille/exaequos
+Docker image to compile a project for [ExaequOS](https://www.exaequos.com).
+The published image is [lecrapouille/exaequos](https://hub.docker.com/r/lecrapouille/exaequos).
+
+The compiler is in `/opt/emscripten-exa` and is readable by any user id.
+`EM_CONFIG` points at `/opt/emscripten-exa/.emscripten`, and the cache is
+`/opt/emscripten-exa/cache`. A CI job can run `docker run -u $(id -u)`
+without being root.
 
 ## Prerequisite
 
-- Install Docker engine: https://docs.docker.com/engine/install/
-- Create a cache folder in your home folder:
-```
+Install Docker: https://docs.docker.com/engine/install/
+
+Create the compiler cache before the first run. If the folder is missing,
+Docker creates it as root inside your home:
+
+```sh
 mkdir -p ~/.cache/exaequos
 ```
 
-If this folder is not created, the Docker will create one but with root priviledge and you do not want to have root folder inside your folders.
+## Build the image
 
-
-## Clone the Dockerfile for exaequOS
-
-```
-git clone https://github.com/baudaux/docker-exa.git
+```sh
+git clone https://github.com/Lecrapouille/docker-exa.git
 cd docker-exa
-```
-
-## Build the docker image
-
-```
 docker build -t exaequos .
 ```
 
-## Run exaequOS Docker against your project you want to compile
+## Compile a project
 
-- Go to you project folder first. Let suppose your user name is `John` and the project name is `test_project`.
-- Then call exaequOS docker against your project:
+From the project directory (`test_project` below):
 
-```
+```sh
 cd /home/John/test_project
-docker run -it -u $(id -u ${USER}):$(id -g ${USER}) -v $(pwd):$(pwd) -v ~/.cache/exaequos:/home/exaequos/emscripten-exa/cache -p 127.0.0.1:7777:7777 -w $(pwd) exaequos
+docker run -it --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):$(pwd)" \
+    -v "$HOME/.cache/exaequos:/opt/emscripten-exa/cache" \
+    -p 127.0.0.1:7777:7777 \
+    -w "$(pwd)" \
+    exaequos
 ```
 
-Once inside your Docker, you will see this kind of prompt:
+The prompt looks like:
 
-```
+```text
 ExaequOS:720c9a20d6d4:/home/John/test_project$
 ```
 
-If your project depends on graphical libs. You can download them:
+A program that needs the graphical libraries installs them with `epm.py`.
+They land in `exapkgs/`:
 
-```
-ExaequOS:720c9a20d6d4:/home/John/test_project$ epm.py install exa-wayland glfw raylib
-```
-
-A folder `exapkgs` shall have been created. You can refer the path to pkg-config:
-
-```
-ExaequOS:720c9a20d6d4:/home/John/test_project$ export PKG_CONFIG_PATH=/home/John/test_project/exapkgs/pkgconfigs
+```sh
+epm.py install exa-wayland glfw raylib
+export PKG_CONFIG_PATH="$(pwd)/exapkgs/pkgconfigs"
 ```
 
-Let compile `test` application. For example
+Compile with `emcc` for C and `em++` for C++. `emar crs` creates a static
+library. The flags are the same as for gcc and g++:
 
+```sh
+emcc test.c -o test.js
 ```
-ExaequOS:720c9a20d6d4:/home/John/test_project/src$ emcc test.c -o test.js
-```
 
-Use `em++` for compiling C++ files and `emar crs` for creating static libs. Compilation flags are not shown here but are the same than gcc/g++.
+To install an extra Debian package, connect to the running container as root:
 
-If you need to install additional packages inside the docker, you can get the `container id` and connect to the docker container as root:
-
-```
+```sh
 docker ps
 docker exec -it -u root <container_id> /bin/bash
 ```
 
-## Run local server inside docker
+## Run it
 
-Once your application has been compiled, copy the `test.js` and `test.wasm` binaries inside the `/home/John/test_project/media/localhost/test/exa` folder (and `test.worker.js`if you compiled the application with -pthread).
-Create in this folder an `exa.html` file with the following content (Replace `test.js` by the real name of your application):
+Copy `test.js` and `test.wasm` into `media/localhost/test/exa`, next to an
+`exa.html` that loads the script. A build with `-pthread` also needs
+`test.worker.js` in that folder:
 
-```
+```html
 <!doctype html>
 <html lang="en-us">
 <head>
@@ -84,7 +85,7 @@ Create in this folder an `exa.html` file with the following content (Replace `te
   <title>Emscripten-Generated Code</title>
   <style>
     html, body {
-      margin : 0;
+      margin: 0;
       padding: 0;
       border: none;
       width: 100%;
@@ -98,25 +99,42 @@ Create in this folder an `exa.html` file with the following content (Replace `te
 </html>
 ```
 
-Start the node server at parent directory of `media/locahost` (`/home/John/test_project/` in this example)
+The container does not start the file server. Start it yourself from the
+directory that contains `media/` (the project directory here), so it sees
+that folder. Port 7777 is the one published above:
 
+```sh
+node /opt/emscripten-exa/third_party/server/server.js &
 ```
-node /home/exaequos/emscripten-exa/third_party/server/server.js &
-```
 
-## Run app inside exaequos.com
+Open https://www.exaequos.com/, start the console Havoc and type:
 
-Go to https://www.exaequos.com/ start the console `Havoc` and type:
-
-```
+```text
 /media/localhost/test
 ```
 
-## For developers
+## Continuous integration
 
-Publish the docker image to Docker hub:
-
+```yaml
+- name: Compile with ExaequOS
+  run: |
+    mkdir -p "$HOME/.cache/exaequos"
+    docker run --rm \
+      -u "$(id -u):$(id -g)" \
+      -v "$PWD:$PWD" \
+      -v "$HOME/.cache/exaequos:/opt/emscripten-exa/cache" \
+      -w "$PWD" \
+      lecrapouille/exaequos:latest \
+      bash -c 'make download-external-libs && make compile-external-libs && make -j"$(nproc)" && make install'
 ```
+
+This command matches this Dockerfile. The image currently published as
+`lecrapouille/exaequos:latest` still keeps the compiler in a private home,
+so a runner has to use root until this image is pushed.
+
+## Publish the image
+
+```sh
 docker login
 docker tag exaequos:latest lecrapouille/exaequos:latest
 docker push lecrapouille/exaequos:latest
